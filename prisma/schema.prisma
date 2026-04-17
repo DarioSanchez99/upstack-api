@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  DELETE
+  PATCH
+}
+
+enum MonitorStatus {
+  UP
+  DOWN
+  DEGRADED
+  PENDING
+}
+
+enum CheckStatus {
+  UP
+  DOWN
+  DEGRADED
+}
+
+enum AlertType {
+  DOWN
+  RECOVERED
+}
+
+model User {
+  id               String      @id @default(uuid())
+  email            String      @unique
+  passwordHash     String
+  name             String?
+  plan             Plan        @default(FREE)
+  stripeCustomerId String?
+  createdAt        DateTime    @default(now())
+
+  workspaces       Workspace[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id        String    @id @default(uuid())
+  userId    String
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors  Monitor[]
+
+  @@map("workspaces")
+}
+
+model Monitor {
+  id             String        @id @default(uuid())
+  workspaceId    String
+  name           String
+  url            String
+  method         HttpMethod    @default(GET)
+  headers        Json          @default("{}")
+  body           String?
+  intervalMins   Int           @default(5)
+  timeoutSecs    Int           @default(30)
+  expectedStatus Int           @default(200)
+  isActive       Boolean       @default(true)
+  status         MonitorStatus @default(PENDING)
+  lastChecked    DateTime?
+  nextCheck      DateTime?
+  createdAt      DateTime      @default(now())
+
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  checkResults   CheckResult[]
+  alertLogs      AlertLog[]
+
+  @@map("monitors")
+}
+
+model CheckResult {
+  id             String      @id @default(uuid())
+  monitorId      String
+  status         CheckStatus
+  statusCode     Int?
+  responseTimeMs Int?
+  errorMessage   String?
+  checkedAt      DateTime    @default(now())
+
+  monitor        Monitor     @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@map("check_results")
+}
+
+model AlertLog {
+  id        String    @id @default(uuid())
+  monitorId String
+  type      AlertType
+  sentTo    String
+  sentAt    DateTime  @default(now())
+
+  monitor   Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@map("alert_logs")
+}
