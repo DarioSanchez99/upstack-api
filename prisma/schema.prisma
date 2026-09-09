@@ -38,6 +38,11 @@ enum AlertType {
   RECOVERED
 }
 
+enum DeliveryStatus {
+  SENT
+  FAILED
+}
+
 model User {
   id               String      @id @default(uuid())
   email            String      @unique
@@ -104,13 +109,14 @@ model CheckResult {
 }
 
 model AlertLog {
-  id        String    @id @default(uuid())
-  monitorId String
-  type      AlertType
-  sentTo    String
-  sentAt    DateTime  @default(now())
+  id             String         @id @default(uuid())
+  monitorId      String
+  type           AlertType
+  sentTo         String
+  deliveryStatus DeliveryStatus @default(SENT)
+  sentAt         DateTime       @default(now())
 
-  monitor   Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  monitor        Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
 
   @@map("alert_logs")
 }

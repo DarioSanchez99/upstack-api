@@ -37,12 +37,30 @@ const assertOwnership = async (monitorId, userId) => {
   return monitor;
 };
 
-const listMonitors = async (userId) => {
+const listMonitors = async (userId, query = {}) => {
   const workspace = await getUserWorkspace(userId);
-  return prisma.monitor.findMany({
-    where: { workspaceId: workspace.id },
-    orderBy: { createdAt: 'desc' },
-  });
+
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 20));
+  const skip = (page - 1) * limit;
+
+  const [data, total] = await Promise.all([
+    prisma.monitor.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.monitor.count({ where: { workspaceId: workspace.id } }),
+  ]);
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
 };
 
 const getMonitor = async (monitorId, userId) => {

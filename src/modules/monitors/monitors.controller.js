@@ -17,8 +17,8 @@ const updateMonitorSchema = createMonitorSchema.partial();
 
 const list = async (req, res, next) => {
   try {
-    const monitors = await monitorsService.listMonitors(req.user.userId);
-    res.json({ monitors });
+    const result = await monitorsService.listMonitors(req.user.userId, req.query);
+    res.json(result);
   } catch (err) {
     next(err);
   }

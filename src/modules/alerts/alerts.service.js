@@ -11,6 +11,33 @@ const formatDuration = (ms) => {
 };
 
 /**
+ * Attempt to send an email with retry logic.
+ * Returns 'SENT' on success, 'FAILED' after all retries are exhausted.
+ * Never throws — errors are logged but suppressed so the check engine keeps running.
+ *
+ * @param {Function} sendFn - Async function that calls the email provider
+ * @param {string}   label  - Human-readable label for log messages
+ * @param {number}   maxRetries - Number of attempts (default: 3)
+ */
+const sendWithRetry = async (sendFn, label, maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await sendFn();
+      return 'SENT';
+    } catch (err) {
+      console.error(
+        `[alerts] Email send failed (${label}) — attempt ${attempt}/${maxRetries}: ${err.message}`
+      );
+      if (attempt < maxRetries) {
+        // Brief back-off before retrying: 500ms, 1000ms, …
+        await new Promise((r) => setTimeout(r, attempt * 500));
+      }
+    }
+  }
+  return 'FAILED';
+};
+
+/**
  * Send an alert when a monitor changes status.
  *
  * Anti-spam rules:
@@ -49,17 +76,25 @@ const sendAlert = async (monitor, newStatus, previousStatus) => {
         return;
       }
 
-      await sendDownAlert(userEmail, monitorName, monitorUrl, new Date());
+      const deliveryStatus = await sendWithRetry(
+        () => sendDownAlert(userEmail, monitorName, monitorUrl, new Date()),
+        `DOWN / ${monitorName}`
+      );
 
       await prisma.alertLog.create({
         data: {
           monitorId: monitor.id,
           type: 'DOWN',
           sentTo: userEmail,
+          deliveryStatus,
         },
       });
 
-      console.log(`[alerts] DOWN alert sent for ${monitorName} → ${userEmail}`);
+      if (deliveryStatus === 'SENT') {
+        console.log(`[alerts] DOWN alert sent for ${monitorName} → ${userEmail}`);
+      } else {
+        console.error(`[alerts] DOWN alert FAILED for ${monitorName} → ${userEmail} after all retries`);
+      }
     } else if (newStatus === 'UP' && previousStatus === 'DOWN') {
       // Find the time the monitor went DOWN (last DOWN alert)
       const lastDownAlert = await prisma.alertLog.findFirst({
@@ -71,21 +106,29 @@ const sendAlert = async (monitor, newStatus, previousStatus) => {
         ? formatDuration(Date.now() - lastDownAlert.sentAt.getTime())
         : 'unknown duration';
 
-      await sendRecoveredAlert(userEmail, monitorName, monitorUrl, downDuration);
+      const deliveryStatus = await sendWithRetry(
+        () => sendRecoveredAlert(userEmail, monitorName, monitorUrl, downDuration),
+        `RECOVERED / ${monitorName}`
+      );
 
       await prisma.alertLog.create({
         data: {
           monitorId: monitor.id,
           type: 'RECOVERED',
           sentTo: userEmail,
+          deliveryStatus,
         },
       });
 
-      console.log(`[alerts] RECOVERED alert sent for ${monitorName} → ${userEmail}`);
+      if (deliveryStatus === 'SENT') {
+        console.log(`[alerts] RECOVERED alert sent for ${monitorName} → ${userEmail}`);
+      } else {
+        console.error(`[alerts] RECOVERED alert FAILED for ${monitorName} → ${userEmail} after all retries`);
+      }
     }
   } catch (err) {
     // Never let alert errors crash the check engine
-    console.error(`[alerts] Failed to send alert for monitor ${monitor.id}:`, err.message);
+    console.error(`[alerts] Failed to process alert for monitor ${monitor.id}:`, err.message);
   }
 };
 
