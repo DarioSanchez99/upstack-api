@@ -1,4 +1,20 @@
-# Upstack API
+<div align="center">
+
+# ⚙️ Upstack API
+
+**Backend for the Upstack API monitoring SaaS — check engine, BullMQ, Stripe & email alerts**
+
+![Node.js](https://img.shields.io/badge/Node.js%2020-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![Stripe](https://img.shields.io/badge/Stripe-635BFF?style=for-the-badge&logo=stripe&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+
+</div>
+
+---
 
 > Upstack is an API monitoring SaaS. It continuously checks your HTTP endpoints on configurable intervals, tracks uptime and response time, sends email alerts when endpoints go down or recover, and provides a public status page per workspace.
 
